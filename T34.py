@@ -1,3 +1,10 @@
+# Author:      Noah Johnson
+# Class:       CENG 325
+# Assignment:  #2 - T34 Assembler
+# Professor:   Dr. Christer Karlsson
+# Date:        12/07/2022
+
+
 import sys
 import fileinput
 
@@ -11,6 +18,10 @@ byteXOR = 0
 byteCount = 0
 errorCount = 0
 
+# change to "True" to run tests
+# no command line arguments are necessary to run the tests
+RUNTESTS = False
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -22,6 +33,10 @@ errorCount = 0
 
 
 def main():
+
+    if RUNTESTS:
+        runTests()
+        return 
 
     global errorCount
 
@@ -73,7 +88,6 @@ def main():
 
 
 
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #                                                                                           # 
 #                                    Primary Methods                                        # 
@@ -100,7 +114,8 @@ def addToDictionary(line):
         return -1 # bad opcode
 
     if "*" in operand or "/" in operand or "=" in operand or "+" in operand or "-" in operand \
-         or "." in operand or "&" in operand or "!" in operand or "%" in operand:
+         or "." in operand or "&" in operand or "!" in operand or "%" in operand or "<" in operand or ">" in operand\
+            or "'" in operand or "\"" in operand:
         try:
             operand = parse(operand)
         except:
@@ -202,10 +217,13 @@ def readInstructionLine(line):
     global byteXOR
 
     currentLine += 1
-    if len(line) > 64:
-        out.write("Bad operand on line: " + str(currentLine))
+    if len(line) > 79:
+        out.write("Bad operand on line: " + str(currentLine) + "\n")
         return -6
     if(line[0] == '*'):
+        if len(line) > 64:
+            out.write("Bad operand on line: " + str(currentLine) + "\n")
+            return -6
         return
     label = line[0:9].replace(" ", "").replace("\n", "").upper()
     instruction = line[9:13].replace(" ", "").replace("\n", "").upper()
@@ -231,7 +249,8 @@ def readInstructionLine(line):
 
 
     if "*" in operand or "/" in operand or "=" in operand or "+" in operand or "-" in operand \
-         or "." in operand or "&" in operand or "!" in operand or "%" in operand:
+         or "." in operand or "&" in operand or "!" in operand or "%" in operand or "<" in operand or ">" in operand\
+            or "'" in operand or "\"" in operand:
         try:
             operand = parse(operand)
         except:
@@ -301,53 +320,22 @@ def readInstructionLine(line):
 #                                                                                           #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-def outputFinalMessage():
-    out.write("\n--End assembly, " + str(byteCount) + " bytes, Errors: " + str(errorCount))
 
-def incrementHex(hexNum, incAmount = 1):
-    hexNum = str(hexNum).replace("$", "")
-    return hex(int(hexNum, 16) + incAmount).replace("0x", "").upper()
 
 def addHex(hexNum1, hexNum2):
     hexNum1 = str(hexNum1).replace("$", "")
     hexNum2 = str(hexNum2).replace("$", "")
     return hex(int(hexNum1, 16) + int(hexNum2, 16)).replace("0x", "").upper()
 
-def subHex(hexNum1, hexNum2):
-    hexNum1 = str(hexNum1).replace("$", "")
-    hexNum2 = str(hexNum2).replace("$", "")
-    return hex(int(hexNum1, 16) - int(hexNum2, 16)).replace("0x", "").upper()
-
 def hexIsGreaterThanFF(hexNum):
     return int(hexNum.replace("$", ""), 16) > 255
 
-def resetProgramCounter():
-    global pc
-    global programStart
-    pc = programStart
+def incrementHex(hexNum, incAmount = 1):
+    hexNum = str(hexNum).replace("$", "")
+    return hex(int(hexNum, 16) + incAmount).replace("0x", "").upper()
 
-def resetCurrentLine():
-    global currentLine
-    currentLine = 0
-
-def write(opcode, byte1= "", byte2 = ""):
-    global byteXOR
-    global byteCount
-    global pc
-    
-    if byte1 != "":
-        byte1 = byte1.zfill(2)
-        byteXOR ^= int(byte1, 16)
-        byteCount += 1
-    if byte2 != "":
-        byte2 = byte2.zfill(2)
-        byteXOR ^= int(byte2, 16)
-        byteCount += 1
-    byteXOR ^= int(opcode, 16)
-    byteCount += 1
-
-    out.write(str(pc) + ": " + opcode + " " + byte1 + " " + byte2 + "\n")    
-
+def outputFinalMessage():
+    out.write("\n--End assembly, " + str(byteCount) + " bytes, Errors: " + str(errorCount))
 
 def parse(operand):
     x = str(operand)
@@ -370,16 +358,25 @@ def parse(operand):
 
     # convert all the elements of numList to decimal
     for index in range(len(numList)):
-        if numList[index][0] == "%":
+        if(isinstance(numList[index], int)):
+            continue
+        numList[index] = numList[index].replace(" ", "").replace("#", "")
+        if numList[index][0] == "$":
+            numList[index] = int(numList[index].replace("$", ""), 16)
+        elif numList[index][0] == "%":
             numList[index] = int(numList[index].replace("%", ""), 2)
-        elif numList[index][0] == "$" or numList[index][0] == "#":
-            numList[index] = int(numList[index].replace("$", "").replace("#", ""), 16)       
         elif numList[index][0] == "O":
             numList[index] = int(numList[index].replace("O", ""), 8)
-        elif numList[index][0].isalpha():
+        elif numList[index][0] == "<":
+            numList[index] = int(numList[index][1] + numList[index][2], 16)
+        elif numList[index][0] == ">":
+            numList[index] = int(numList[index][3] + numList[index][4], 16)
+        elif numList[index][0].isalpha() and len(numList[index]) == 1:
+            numList[index] = ord(numList[index][0])
+        elif numList[index][0].isalpha() and len(numList[index]) != 1:
             numList[index] = int(str(labelDictionary[numList[index]]).replace("$", ""), 16)    
         else:
-            numList[index] = int(numList[index].replace("#", ""))    
+            numList[index] = int(numList[index], 16)    
 
     while len(opList) != 0:
         if opList[0] == "+":
@@ -407,6 +404,40 @@ def parse(operand):
     elif len(returnValue) == 3:
         returnValue = returnValue.zfill(4)
     return "$" + returnValue
+
+def resetCurrentLine():
+    global currentLine
+    currentLine = 0
+
+def resetProgramCounter():
+    global pc
+    global programStart
+    pc = programStart
+
+def subHex(hexNum1, hexNum2):
+    hexNum1 = str(hexNum1).replace("$", "")
+    hexNum2 = str(hexNum2).replace("$", "")
+    return hex(int(hexNum1, 16) - int(hexNum2, 16)).replace("0x", "").upper()
+
+def write(opcode, byte1= "", byte2 = ""):
+    global byteXOR
+    global byteCount
+    global pc
+    
+    if byte1 != "":
+        byte1 = byte1.zfill(2)
+        byteXOR ^= int(byte1, 16)
+        byteCount += 1
+    if byte2 != "":
+        byte2 = byte2.zfill(2)
+        byteXOR ^= int(byte2, 16)
+        byteCount += 1
+    byteXOR ^= int(opcode, 16)
+    byteCount += 1
+
+    out.write(str(pc) + ": " + opcode + " " + byte1 + " " + byte2 + "\n")    
+
+
 
 
 
@@ -636,5 +667,65 @@ instructionSet = [
 "PHA", "PHP", "PLA", "PLP", "ROL", "ROR", "RTI", "RTS", "SBC", "SEC", "SED", "SEI", 
 "STA", "STX", "STY", "TAX", "TAY", "TSX", "TXA", "TXS", "TYA"
 ]
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#                                                                                           # 
+#                                         Testing                                           # 
+#                                                                                           #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+
+
+def runTests():
+    print("\nRunning Tests...\n")
+    passedAll = True
+
+    print("Testing addHex(\"$10\", \"$10\")")
+    if(addHex("$10", "$10") != "20"):
+        print("addHex(\"$10\", \"$10\") FAILED ***")
+        passedAll = False
+        
+    print("Testing hexIsGreaterThanFF(\"$10\")")
+    if(hexIsGreaterThanFF("$10") != False):
+        print("hexIsGreaterThanFF(\"$10\") FAILED ***")
+        passedAll = False
+    
+    print("Testing hexIsGreaterThanFF(\"$100\")")
+    if(hexIsGreaterThanFF("$100") != True):
+        print("hexIsGreaterThanFF(\"$100\") FAILED ***")
+        passedAll = False
+
+    print("Testing incrementHex(\"$123\")")
+    if(incrementHex("$123") != "124"):
+        print("incrementHex(\"$123\") FAILED ***")
+        passedAll = False
+    
+    print("Testing incrementHex(\"$123\", \"5\")")
+    if(incrementHex("$123", 5) != "128"):
+        print("incrementHex(\"$123\", \"5\") FAILED ***")
+        passedAll = False
+    
+    print("Testing parse(\"1234+%10111\")")
+    if(parse("1234+%10111") != "$124B"):
+        print("parse(\"1234+%10111\") FAILED ***")
+
+    print("Testing parse(\"d!O1234\")")
+    if(parse("d!O1234") != "$02F8"):
+        print("parse(\"d!O1234\") FAILED ***")
+        passedAll = False
+
+    print("Testing parse(\"%01*q.O245\")")
+    if(parse("O123*q.<2455") != "$24A7"):
+        print("parse(\"O123*q.<2455\") FAILED ***")
+        passedAll = False
+
+    print("Testing subHex(\"$111\", \"$60\")")
+    if(subHex("$111", "$60") != "B1"):
+        print("subHex(\"$111\", \"$60\") FAILED ***")
+        passedAll = False
+
+
 
 main()
